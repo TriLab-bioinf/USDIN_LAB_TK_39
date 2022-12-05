@@ -150,18 +150,20 @@ module load fastq_screen/0.15.2
 module load fastqc
 while IFS= read -r prefix
 do
-	file1=$fastqdir/${prefix}.R1.fastq.gz
-	file2=$fastqdir/${prefix}.R2.fastq.gz
-	echo
-	echo Running FASTQC on $file1 and $file2
-	echo Starting time `date`
-	echo fastqc -t ${CPU} $file1 $file2
-	
-	fastqc -t ${CPU} $file1 $file2
-	echo
-	echo Done!!! `date`
-	echo
-done < "$input"
+	if [ ! -f $fastqdir/${prefix}.R2_fastqc.html ]; then
+		file1=$fastqdir/${prefix}.R1.fastq.gz
+		file2=$fastqdir/${prefix}.R2.fastq.gz
+		echo
+		echo Running FASTQC on $file1 and $file2
+		echo Starting time `date`
+		echo fastqc -t ${CPU} $file1 $file2
+		
+		fastqc -t ${CPU} $file1 $file2
+		echo
+		echo Done!!! `date`
+		echo
+	fi
+done < ${strain_text_file}
 module unload fastqc
 
 ## Step 2
@@ -176,28 +178,30 @@ module load trimmomatic/0.38
 
 while IFS= read -r prefix
 do
-	file1=$fastqdir/${prefix}.R1.fastq.gz
-	file2=$fastqdir/${prefix}.R2.fastq.gz
-	outP1=$fastqdir/${prefix}.R1.paired.fastq.gz
-	outP2=$fastqdir/${prefix}.R2.paired.fastq.gz
-	outUP1=$fastqdir/${prefix}.R1.unpaired.fastq.gz
-	outUP2=$fastqdir/${prefix}.R2.unpaired.fastq.gz
-	log=$fastqdir/${prefix}.trim.log
+	if [ ! -f $fastqdir/${prefix}.R2.paired.fastq.gz ]; then
+		file1=$fastqdir/${prefix}.R1.fastq.gz
+		file2=$fastqdir/${prefix}.R2.fastq.gz
+		outP1=$fastqdir/${prefix}.R1.paired.fastq.gz
+		outP2=$fastqdir/${prefix}.R2.paired.fastq.gz
+		outUP1=$fastqdir/${prefix}.R1.unpaired.fastq.gz
+		outUP2=$fastqdir/${prefix}.R2.unpaired.fastq.gz
+		log=$fastqdir/${prefix}.trim.log
 
-	echo Trimming reads 
-	echo java -jar $TRIMMOMATIC_JAR PE -threads ${CPU} -trimlog $log $file1 $file2 $outP1 $outUP1 $outP2 $outUP2 ILLUMINACLIP:$TRIMMOMATIC_JARPATH/adapters/TruSeq3-PE.fa:2:30:10:5:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30
-	echo
-	java -jar $TRIMMOMATIC_JAR \
-		-threads ${CPU} \
-		-trimlog $log \
-		$file1 $file2 $outP1 $outUP1 $outP2 $outUP2 \
-		ILLUMINACLIP:$TRIMMOMATIC_JARPATH/adapters/TruSeq3-PE.fa:2:30:10:5:true \
-		LEADING:3 \
-		TRAILING:3 \
-		SLIDINGWINDOW:4:20 \
-		MINLEN:30
-	echo
-done <$input
+		echo Trimming reads 
+		echo java -jar $TRIMMOMATIC_JAR PE -threads ${CPU} -trimlog $log $file1 $file2 $outP1 $outUP1 $outP2 $outUP2 ILLUMINACLIP:$TRIMMOMATIC_JARPATH/adapters/TruSeq3-PE.fa:2:30:10:5:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30
+		echo
+		java -jar $TRIMMOMATIC_JAR PE\
+			-threads ${CPU} \
+			-trimlog $log \
+			$file1 $file2 $outP1 $outUP1 $outP2 $outUP2 \
+			ILLUMINACLIP:$TRIMMOMATIC_JARPATH/adapters/TruSeq3-PE.fa:2:30:10:5:true \
+			LEADING:3 \
+			TRAILING:3 \
+			SLIDINGWINDOW:4:20 \
+			MINLEN:30
+		echo
+	fi
+done < ${strain_text_file}
 module unload trimmomatic
 
 ## Step 3
