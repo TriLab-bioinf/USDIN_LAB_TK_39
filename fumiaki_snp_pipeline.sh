@@ -213,7 +213,7 @@ cd $workingdir/
 while read prefix 
 do
 	prefix_list+=(${prefix}) # stores prefix names for later
-	if [ $DO_MAPPING && ! -f ${prefix}.bam]; then
+	if [[ $DO_MAPPING && ! -f ${prefix}.bam ]]; then
 		#echo; echo "Running bowtie2 mem on ${prefix}_R1.fastq.gz and ${prefix}_R2.fastq.gz"; echo 
 		#bowtie2 -x ${db_index} \
 		#--end-to-end \
@@ -224,7 +224,7 @@ do
 		#-2 $fastqdir/${prefix}_R2.fastq.gz -b $workingdir/${prefix}.bam
 		#echo ${prefix}_BOWTIE2
 
-		echo; echo "Running bwa mem on ${prefix}.R1.fastq.gz and ${prefix}.R2.fastq.gz"; echo 
+		echo; echo "Running bwa mem on $fastqdir/${prefix}.R1.paired.fastq.gz and $fastqdir/${prefix}.R2.paired.fastq.gz"; echo 
 		echo bwa mem -R "@RG\tID:${prefix}\tSM:${prefix}\tPL:illumina\tLB:lib1\tPU:unit1" -t 16 -M ${REFERENCE} $fastqdir/${prefix}.R1.paired.fastq.gz $fastqdir/${prefix}.R2.paired.fastq.gz
 		bwa mem -R "@RG\tID:${prefix}\tSM:${prefix}\tPL:illumina\tLB:lib1\tPU:unit1" \
 		-t ${CPU} \
@@ -236,8 +236,6 @@ done < ${strain_text_file}
 ## Step 4
 ## run pipeline to process bam file and call variants. 
 ## the parameters for calling variants are basically the default ones recommended by gatk for the current version 3.1.1
-
-#####Caution!!! HAVE TO CHECK RECOMMENDED PARAMETERS FOR THE CURRRENT CERSION
 
 ## the pipeline runs in parallel in the HaplotypeCaller step, everything else is not being parallelized.  My recommendation to run this script for large number of samples would be to submit various jobs.  
 ## The last step includes a ploidy argument. Change it if your genome is not haploid (1)
