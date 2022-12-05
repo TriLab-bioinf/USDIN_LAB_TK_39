@@ -199,7 +199,6 @@ do
 	echo
 done <$input
 module unload trimmomatic
-module unload Java
 
 ## Step 3
 ## map to reference
