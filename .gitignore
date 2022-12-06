@@ -1,0 +1,9 @@
+slurm-*
+ALL*
+mm10*
+WT*
+Pms*
+*.bai
+*.bam
+*.sam
+output*
