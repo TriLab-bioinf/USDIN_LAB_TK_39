@@ -245,24 +245,25 @@ do
 	# Analysis-ready reads
 	####################################################################################
 
-	echo "Calling variants (gvcf) for  ${prefix} ...." 
+	echo; echo "Calling variants (gvcf) for  ${prefix} ...."; echo
+
 	if [ ! -f ${prefix}.sorted.bam ]; then
 		echo; echo "Running ${PC} on ${prefix}.bam"; echo 
-		java -Xmx100G -Djava.io.tmpdir=$tempdir -jar $PC INPUT=${prefix}.bam OUTPUT=${prefix}.sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true
+		java -Xmx64G -Djava.io.tmpdir=$tempdir -jar $PC INPUT=${prefix}.bam OUTPUT=${prefix}.sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true
 	fi 
 	if [ ! -f ${prefix}.dedup.bam ]; then
 		echo; echo "Running ${MD} on ${prefix}.sorted.bam"; echo
-		java -Xmx100G -Djava.io.tmpdir=$tempdir -jar $MD INPUT=${prefix}.sorted.bam OUTPUT=${prefix}.dedup.bam M=${prefix}.metrics.txt
+		java -Xmx64G -Djava.io.tmpdir=$tempdir -jar $MD INPUT=${prefix}.sorted.bam OUTPUT=${prefix}.dedup.bam M=${prefix}.metrics.txt
 	fi
 	if [ ! -f ${prefix}.dedup.bai ]; then
 		echo; echo "Running ${BI} on ${prefix}.sorted.bam"; echo	
-		java -Xmx100G -Djava.io.tmpdir=$tempdir -jar $BI INPUT=${prefix}.dedup.bam
+		java -Xmx64G -Djava.io.tmpdir=$tempdir -jar $BI INPUT=${prefix}.dedup.bam
 	fi
 
 	##########################################
 	if [ ! -f ${prefix}.BaseRecalibrator.table ]; then
 		echo; echo "Running gatk -T BaseRecalibrator on ${prefix}.dedup.bam"; echo
-		gatk --java-options "-Xmx30G -Djava.io.tmpdir=$tempdir" BaseRecalibrator \
+		gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" BaseRecalibrator \
 			-R ${REFERENCE} \
             -I ${prefix}.dedup.bam \
             --known-sites /fdb/GATK_resource_bundle/mm10/dbsnp146_fixedNames.vcf.gz \
@@ -271,7 +272,7 @@ do
 
 	if [ ! -f ${prefix}.recalibrator.bam ]; then
 		echo; echo "Running gatk -T ApplyBQSR on ${prefix}.dedup.bam"; echo
-		gatk --java-options "-Xmx30G -Djava.io.tmpdir=$tempdir" ApplyBQSR \
+		gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" ApplyBQSR \
 			-R ${REFERENCE} \
 			-I ${prefix}.dedup.bam \
 			--bqsr-recal-file ${prefix}.BaseRecalibrator.table \
@@ -286,7 +287,7 @@ do
 	
 	if [ ! -f ${prefix}.raw.snps.indels.g.vcf ]; then
 		echo; echo "Running gatk -T HaplotypeCaller -ERC GVCF>> on ${prefix}.recalibrator.bam"; echo
-		gatk --java-options "-Xmx100G -Djava.io.tmpdir=${tempdir}" \
+		gatk --java-options "-Xmx64G -Djava.io.tmpdir=${tempdir}" \
 			HaplotypeCaller \
 			-ERC GVCF \
 			-R ${REFERENCE} \
@@ -337,7 +338,7 @@ for (( loop1=0; loop1 < min_groups; loop1++ )); do
 	done
 	if [ ! -f CombineGVCFs_${loop1}.g.vcf ]; then
 		echo; echo "Running CombineGVCFs in loop number ${loop1}"; echo
-		gatk --java-options "-Xmx13G -Djava.io.tmpdir=$tempdir -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
+		gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
 			CombineGVCFs \
  			-R ${REFERENCE} \
  			-O CombineGVCFs_${loop1}.g.vcf \
@@ -357,7 +358,7 @@ echo GVCF consoliodation done.; echo
 #cd $workingdir
 if [ ! -f ${OUTPUT}_raw_variants.vcf ]; then
 echo; echo "Running GenotypeGVCFs on *.g.vcf files" ; echo
-gatk --java-options "-Xmx13G -Djava.io.tmpdir=$tempdir" \
+gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" \
 	GenotypeGVCFs \
 	-R ${REFERENCE} \
 	--max-alternate-alleles 6 \
@@ -380,7 +381,7 @@ fi
 ##Run the following GATK command:
 if [ ! -f ${OUTPUT}_raw_snps.vcf ]; then
 echo; echo "Running SelectVariants on ${OUTPUT}_raw_variants.vcf" ; echo
-gatk --java-options "-Xmx13G -Djava.io.tmpdir=$tempdir" \
+gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" \
 	SelectVariants \
 	-R ${REFERENCE} \
 	-V ${OUTPUT}_raw_variants.vcf \
@@ -398,7 +399,7 @@ fi
 ##Run the following GATK command:
 if [ ! -f ${OUTPUT}_filtered_snps.vcf ]; then
 echo; echo "Running VariantFiltration on ${OUTPUT}_raw_snps.vcf" ; echo
-gatk --java-options "-Xmx13G -Djava.io.tmpdir=$tempdir" \
+gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" \
 	VariantFiltration \
 	-R ${REFERENCE} \
 	-V ${OUTPUT}_raw_snps.vcf \
@@ -422,7 +423,7 @@ fi
 ##Run the following GATK command:
 if [ ! -f ${OUTPUT}_raw_indels.vcf ]; then
 echo; echo "Running SelectVariants on ${OUTPUT}_raw_variants.vcf" ; echo
-gatk --java-options "-Xmx13G -Djava.io.tmpdir=$tempdir" \
+gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" \
 	SelectVariants \
 	-R ${REFERENCE} \
 	-V ${OUTPUT}_raw_variants.vcf \
@@ -437,7 +438,7 @@ fi
 ##Run the following GATK command:
 if [ ! -f ${OUTPUT}_filtered_indels.vcf ]; then
 echo; echo "Running VariantFiltration on ${OUTPUT}_raw_indels.vcf" ; echo
-gatk --java-options "-Xmx13G -Djava.io.tmpdir=$tempdir" \
+gatk --java-options "-Xmx64G -Djava.io.tmpdir=$tempdir" \
 	VariantFiltration \
 	-R ${REFERENCE} \
 	-V ${OUTPUT}_raw_indels.vcf \
