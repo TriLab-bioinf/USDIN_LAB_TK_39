@@ -1,0 +1,461 @@
+---
+title: "Mutational signatures"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r Load libraries}
+library(SomaticSignatures)
+library(SomaticCancerAlterations)
+library(BSgenome.Hsapiens.1000genomes.hs37d5)
+library(MutationalPatterns)
+library(tidyr)
+library(dplyr)
+library(readr)
+```
+
+Load VCF samples
+```{r}
+
+sample_names <-c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+
+chr <- c("chr1","chr10","chr11","chr12","chr13","chr14","chr15","chr16",
+         "chr17","chr18","chr19","chr2","chr3","chr4","chr5","chr6","chr7",
+         "chr8","chr9","chrX","chrY")
+
+snp_vcf_files <- c()
+indel_vcf_files <- c()
+group_names <- c()
+
+for (sample in sample_names){
+  for (chrom in chr){
+    snp_vcf_files <- c(snp_vcf_files, paste0(sample,'_',chrom,"_tk39_filtered_snps.vcf") )
+    indel_vcf_files <- c(indel_vcf_files, paste0(sample,'_',chrom,"_tk39_filtered_indels.vcf") )
+    group_names <- c(group_names,  paste0(sample,'_',chrom) )
+  } 
+}
+
+ref_genome <- "BSgenome.Mmusculus.UCSC.mm10"
+library(ref_genome, character.only = TRUE)
+
+groups <- c(rep("WT-day0", 21),rep("WT-day77", 21),rep("Pms1-day0", 21),rep("Pms1-day77", 21))
+genotype <- c(rep("WT", 42),rep("Pms1", 42))
+time <- c(rep("day0", 21),rep("day77", 21),rep("day0", 21),rep("day77", 21))
+
+# Load SNPs
+snp_grl <- read_vcfs_as_granges(snp_vcf_files, group_names, ref_genome)
+snp_grl
+
+# Load InDels
+indel_grl <- read_vcfs_as_granges(indel_vcf_files, group_names, ref_genome, type = "indel")
+indel_grl
+
+```
+
+
+```{r}
+
+sample_names <-c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+
+
+snp_vcf_files <- c("./cov_x5/WT-day0_tk39_filtered_snps_x5.vcf","./cov_x5/WT-day77_tk39_filtered_snps_x5.vcf","./cov_x5/Pms1-day0_tk39_filtered_snps_x5.vcf","./cov_x5/Pms1-day77_tk39_filtered_snps_x5.vcf")
+indel_vcf_files <- c("./cov_x5/WT-day0_tk39_filtered_indels_x5.vcf","./cov_x5/WT-day77_tk39_filtered_indels_x5.vcf","./cov_x5/Pms1-day0_tk39_filtered_indels_x5.vcf","./cov_x5/Pms1-day77_tk39_filtered_indels_x5.vcf")
+group_names <- c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+
+
+ref_genome <- "BSgenome.Mmusculus.UCSC.mm10"
+library(ref_genome, character.only = TRUE)
+
+groups <- c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+genotype <- c(rep("WT", 2),rep("Pms1", 2))
+time <- c(rep("day0", 1),rep("day77", 1),rep("day0", 1),rep("day77", 1))
+
+# Load SNPs
+snp_grl <- read_vcfs_as_granges(snp_vcf_files, group_names, ref_genome)
+snp_grl
+
+# Load InDels
+indel_grl <- read_vcfs_as_granges(indel_vcf_files, group_names, ref_genome, type = "indel")
+indel_grl
+
+```
+
+```{r}
+
+sample_names <-c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+
+
+snp_vcf_files <- c("./cov_x2/WT-day0_tk39_filtered_snps.vcf","./cov_x2/WT-day77_tk39_filtered_snps.vcf","./cov_x2/Pms1-day0_tk39_filtered_snps.vcf","./cov_x2/Pms1-day77_tk39_filtered_snps.vcf")
+indel_vcf_files <- c("./cov_x2/WT-day0_tk39_filtered_indels.vcf","./cov_x2/WT-day77_tk39_filtered_indels.vcf","./cov_x2/Pms1-day0_tk39_filtered_indels.vcf","./cov_x2/Pms1-day77_tk39_filtered_indels.vcf")
+group_names <- c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+
+
+ref_genome <- "BSgenome.Mmusculus.UCSC.mm10"
+library(ref_genome, character.only = TRUE)
+
+groups <- c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77")
+genotype <- c(rep("WT", 2),rep("Pms1", 2))
+time <- c(rep("day0", 1),rep("day77", 1),rep("day0", 1),rep("day77", 1))
+
+# Load SNPs
+snp_grl <- read_vcfs_as_granges(snp_vcf_files, group_names, ref_genome)
+snp_grl
+
+# Load InDels
+indel_grl <- read_vcfs_as_granges(indel_vcf_files, group_names, ref_genome, type = "indel")
+indel_grl
+
+```
+Remove filtered sites
+```{r}
+snp_grl_pass <- list()
+indel_grl_pass <- list()
+for (i in names(snp_grl)){
+  snp_grl_pass[[i]] <- subset(snp_grl[[i]], FILTER == "PASS")
+  indel_grl_pass[[i]] <- subset(indel_grl[[i]], FILTER == "PASS")
+}
+
+# Total SNP called per sample including reference calls
+total_snps <- tibble(sample_name = c("WT-day0", "WT-day77", "Pms1-day0", "Pms1-day77"), total_SNP_counts = c(53636, 55287, 47886, 56391))
+```
+
+
+
+SNVs
+
+Base substitution types
+
+You can retrieve base substitution types from the VCF GRanges object as "REF>ALT" using mutations_from_vcf:
+```{r}
+muts <- mutations_from_vcf(snp_grl_pass[[1]])
+head(muts, 12)
+```
+
+```{r}
+types <- mut_type(snp_grl_pass[[1]])
+head(types, 12)
+```
+
+```{r}
+context <- mut_context(snp_grl_pass[[1]], ref_genome)
+head(context, 12)
+```
+
+```{r}
+type_context <- type_context(snp_grl_pass[[1]], ref_genome)
+lapply(type_context, head, 12)
+
+type_occurrences <- mut_type_occurrences(snp_grl_pass, ref_genome)
+type_occurrences
+
+# Normalize type_ocurrences by total occurrences per sample
+type_occurrences_norm <- as.data.frame(round(apply(type_occurrences,2, function(y) y*10000/total_ocurrences )))
+```
+
+# Fisher's exact test of mutation types
+```{r}
+
+type_occurrences_norm_t <- t(type_occurrences_norm)
+my_fisher_p <-c()
+my_conf_int_dn <-c()
+my_conf_int_up <-c()
+my_odds <- c()
+my_fdr <- c()
+
+for (mut in 1:nrow(type_occurrences_norm_t)){
+  my_matrix <- t(matrix(type_occurrences_norm_t[mut,], nrow = 2, dimnames = list( Timepoint = c("d0", "d77"),
+                       Genotype = c("WT", "Pms1"))))
+  my_mut_name <- rownames(type_occurrences_norm_t)[mut]
+  print(my_mut_name)
+  print(my_matrix)
+  my_test <- fisher.test(my_matrix)
+  print(my_test)
+  my_fisher_p <- c(my_fisher_p, my_test$p.value)
+  my_conf_int_dn <- c(my_conf_int_dn, my_test$conf.int[1])
+  my_conf_int_up <- c(my_conf_int_up, my_test$conf.int[2])
+  my_odds <- c(my_odds, my_test$estimate)
+  my_fdr <- c(my_fdr, p.adjust(p = my_test$p.value, method = "BH", n = nrow(type_occurrences_norm_t)))
+  
+}
+type_occurrence_report <- tibble(as.data.frame(cbind(mutation = rownames(type_occurrences_norm_t),type_occurrences_norm_t, p.value = round(my_fisher_p, digits = 4), p.adj = round(my_fdr, digits = 4), conf.int.down = round(my_conf_int_dn,digits = 2), conf.int.up = round(my_conf_int_up, digits = 2), odds.ratio = round(my_odds, digits = 2))))
+
+filter(type_occurrence_report, type_occurrence_report$p.value <= 0.1)
+type_occurrence_report
+
+write_tsv(type_occurrence_report, file = "type_occurrence_report.txt")
+```
+
+
+
+```{r}
+library(ggplot2)
+library(cowplot)
+library(extrafont)
+
+type_occurrence_report$odds.ratio <- as.numeric(type_occurrence_report$odds.ratio)
+type_occurrence_report$conf.int.down <- as.numeric(type_occurrence_report$conf.int.down)
+type_occurrence_report$conf.int.up <- as.numeric(type_occurrence_report$conf.int.up)
+
+
+p.occurrence.coi <- ggplot(data = type_occurrence_report, aes(x = mutation, y = odds.ratio, ymin = conf.int.down, ymax = conf.int.up)) + 
+  geom_hline(yintercept = 1, color = "blue" ) +
+  geom_pointrange(colour=ifelse(type_occurrence_report$p.adj <= 0.05,"darkgreen",ifelse(type_occurrence_report$p.value <= 0.05,"orange","darkgrey"))) +
+  ggtitle("Odds ratio of normalized mutation-type counts between Pms1.d77/Pms1.d0 and WT.d77/WT.d0") +
+  theme_classic(base_size = 8) + 
+  coord_flip() 
+
+ggsave2(filename = "mut_ocurrence_report.pdf", plot = p.occurrence.coi) 
+
+p.occurrence.coi
+```
+
+
+```{r}
+p1 <- plot_spectrum(type_occurrences_norm)
+p1
+```
+
+
+```{r}
+p2 <- plot_spectrum(type_occurrences_norm, CT = TRUE)
+p2
+```
+
+```{r}
+p3 <- plot_spectrum(type_occurrences_norm, CT = TRUE, 
+                    indv_points = TRUE, legend = FALSE)
+p3
+```
+
+```{r}
+library("gridExtra")
+grid.arrange(p1, p2, p3, ncol = 3, widths = c(3, 3, 1.75))
+```
+
+It's also possible to create a facet per sample group, e.g. plot the spectrum for each tissue separately:
+```{r}
+p4 <- plot_spectrum(type_occurrences_norm, by = genotype, CT = TRUE, legend = TRUE)
+p4
+```
+Or you could use the standard deviation instead of a 95% confidence interval:
+```{r}
+p5 <- plot_spectrum(type_occurrences_norm, by = groups, CT = TRUE, 
+                    legend = TRUE, error_bars = "stdev")
+p5
+```
+
+96 mutational profile
+
+First you should make a 96 trinucleodide mutation count matrix. (In contrast to previous versions this also works for single samples.)
+```{r}
+mut_mat <- mut_matrix(vcf_list = snp_grl_pass, ref_genome = ref_genome)
+
+mut_mat_norm <- round(t(apply(mut_mat,1, function(y) y*10000/total_snps$total_SNP_counts )))
+
+# Test if normalized number of SNPs is proportionally higher in Pms1 mutant at d77 compared with WT
+normalized_snp_matrix =t(matrix(colSums(mut_mat_norm), nrow = 2, dimnames = list( Timepoint = c("d0", "d77"),
+                                                        Genotype = c("WT", "Pms1"))))
+normalized_snp_matrix.fisher.test <- fisher.test(normalized_snp_matrix)
+
+
+my_fisher_p <-c()
+my_conf_int_dn <-c()
+my_conf_int_up <-c()
+my_odds <- c()
+my_fdr <- c()
+
+for (mut in 1:nrow(mut_mat_norm)){
+  my_matrix <- t(matrix(mut_mat_norm[mut,], nrow = 2, dimnames = list( Timepoint = c("d0", "d77"),
+                       Genotype = c("WT", "Pms1"))))
+  my_mut_name <- rownames(mut_mat_norm)[mut]
+  print(my_mut_name)
+  print(my_matrix)
+  my_test <- fisher.test(my_matrix)
+  print(my_test)
+  my_fisher_p <- c(my_fisher_p, my_test$p.value)
+  my_conf_int_dn <- c(my_conf_int_dn, my_test$conf.int[1])
+  my_conf_int_up <- c(my_conf_int_up, my_test$conf.int[2])
+  my_odds <- c(my_odds, my_test$estimate)
+  my_fdr <- c(my_fdr, p.adjust(p = my_test$p.value, method = "BH", n = nrow(mut_mat_norm)))
+  
+}
+mut_mat_report <- tibble(as.data.frame(cbind(mutation = rownames(mut_mat_norm),mut_mat_norm, p.value = round(my_fisher_p,digits = 4), p.adj = round(my_fdr,digits = 4), conf.int.down = round(my_conf_int_dn,digits = 2), conf.int.up = round(my_conf_int_up,digits = 2), odds.ratio = round(my_odds,digits = 2))))
+
+filter(mut_mat_report, p.value <= 0.2)
+mut_mat_report
+
+write_tsv(mut_mat_report, file = "mut_mat_report.txt")
+
+```
+Plot confidence intervals and odda.ratios
+```{r}
+library(ggplot2)
+library(cowplot)
+library(extrafont)
+
+mut_mat_report$odds.ratio <- as.numeric(mut_mat_report$odds.ratio)
+mut_mat_report$conf.int.down <- as.numeric(mut_mat_report$conf.int.down)
+mut_mat_report$conf.int.up <- as.numeric(mut_mat_report$conf.int.up)
+
+
+p.coi <- ggplot(data = mut_mat_report, aes(x = mutation, y = odds.ratio, ymin = conf.int.down, ymax = conf.int.up)) + 
+  geom_hline(yintercept = 1, color = "blue" ) +
+  geom_pointrange(colour=ifelse(mut_mat_report$p.adj <= 0.05,"darkgreen",ifelse(mut_mat_report$p.value <= 0.05,"orange","darkgrey"))) +
+  ggtitle("Odds ratio of normalized mutation counts between Pms1.d77/Pms1.d0 and WT.d77/WT.d0") +
+  theme_classic(base_size = 8) + 
+  coord_flip() 
+
+
+ggsave2(filename = "mut_matrix_report.pdf", plot = p.coi, height = 11, width = 8) 
+p.coi
+```
+Green denotes mutations having a p.value <= 0.05.. In all cases adjusted p.values are > 0.05.
+
+
+Next, you can use this matrix to plot the 96 profile of samples. In this example we do this for 2 samples:
+```{r}
+p96_profile <- plot_96_profile(mut_mat_norm[, c(1:4)], condensed = TRUE, ymax = 0.05) + scale_y_continuous(breaks = c(0.01,0.02,0.03,0.04,0.05))
+
+ggsave2(filename = "p96_profile_norm.pdf", plot = p96_profile)
+```
+It's also possible to look at larger mutational contexts. However, this is only usefull if you have a large number of mutations.
+
+```{r}
+mut_mat_ext_context <- mut_matrix(snp_grl_pass, ref_genome, extension = 2)
+head(mut_mat_ext_context)
+
+mut_mat_ext_context_norm <- round(t(apply(mut_mat_ext_context,1, function(y) y*10000/total_snps$total_SNP_counts )))
+mut_mat_ext_context_norm
+```
+
+The extension argument also works for the mut_context and type_context functions.
+
+You can visualize this matrix with a heatmap.
+```{r}
+plot_profile_heatmap(mut_mat_ext_context_norm, by = groups)
+```
+
+
+You can also visualize this with a riverplot.
+```{r}
+#plot_river(mut_mat_ext_context[,c(1,23,45,67)])
+plot_river(mut_mat_ext_context_norm[,c(1:4)])
+```
+
+Indels
+
+First you should get the COSMIC indel contexts. This is done with get_indel_context, which adds the columns muttype and muttype_sub to the GRangesList. The muttype column contains the main type of indel. The muttype_sub column shows the number of repeat units. For microhomology (mh) deletions the mh length is shown.
+```{r}
+#indel_grl <- get_indel_context(indel_grl_pass[[1]], ref_genome)
+indel_grl <- lapply(X = indel_grl_pass, FUN = function(z) get_indel_context(z, ref_genome))
+head(indel_grl, n = 4)
+
+```
+
+Next count the number of indels per type. This results in a matrix that is similar to the mut_mat matrix.
+```{r}
+indel_counts <- count_indel_contexts(indel_grl)
+head(indel_counts)
+
+# Normalize Indel counts
+total_indel <- colSums(indel_counts)
+indel_counts_norm <- t(apply(indel_counts, 1, function(y) round(y*10000/total_indel)))
+indel_counts_norm
+```
+
+Now you can plot the Indel spectra. The facets at the top show the indel types. First the C and T deletions. Then the C and T insertions. Next are the multi base deletions and insertions. Finally the deletions with microhomology are shown. The x-axis at the bottom shows the number of repeat units. For mh deletions the microhomology length is shown.
+
+```{r}
+p_indel_context <- plot_indel_contexts(indel_counts_norm[,c(1:4)], condensed = TRUE, same_y = TRUE)
+ggsave2(filename = "p_indel_context_norm.pdf", plot = p_indel_context, width = 11, height = 8 )
+p_indel_context
+```
+
+You can also choose to only plot the main contexts, without taking the number of repeat units or microhomology length into account.
+
+
+```{r}
+plot_main_indel_contexts(indel_counts_norm[,c(1:4)], same_y = TRUE)
+```
+
+Fisher's exact test for normalized Indels
+```{r}
+my_fisher_p <-c()
+my_conf_int_dn <-c()
+my_conf_int_up <-c()
+my_odds <- c()
+my_fdr <- c()
+
+for (mut in 1:nrow(indel_counts_norm)){
+  my_matrix <- t(matrix(indel_counts_norm[mut,], nrow = 2, dimnames = list( Timepoint = c("d0", "d77"),
+                       Genotype = c("WT", "Pms1"))))
+  my_mut_name <- rownames(indel_counts_norm)[mut]
+  print(my_mut_name)
+  print(my_matrix)
+  my_test <- fisher.test(my_matrix)
+  print(my_test)
+  my_fisher_p <- c(my_fisher_p, my_test$p.value)
+  my_conf_int_dn <- c(my_conf_int_dn, my_test$conf.int[1])
+  my_conf_int_up <- c(my_conf_int_up, my_test$conf.int[2])
+  my_odds <- c(my_odds, my_test$estimate)
+  my_fdr <- c(my_fdr, p.adjust(p = my_test$p.value, method = "BH", n = nrow(indel_counts_norm)))
+  
+}
+indel_mat_report <- tibble(as.data.frame(cbind(indel = rownames(indel_counts_norm),
+                                               indel_counts_norm, 
+                                               p.value = round(my_fisher_p,digits = 4), 
+                                               p.adj = round(my_fdr,digits = 4), 
+                                               conf.int.down = round(my_conf_int_dn,digits = 2),
+                                               conf.int.up = round(my_conf_int_up,digits = 2), 
+                                               odds.ratio = round(my_odds,digits = 2))))
+
+filter(indel_mat_report, p.adj <= 0.1)
+indel_mat_report
+
+write_tsv(indel_mat_report, file = "indel_mat_report.txt")
+
+```
+Plot COI for Indels
+```{r}
+indel_mat_report$odds.ratio <- as.numeric(indel_mat_report$odds.ratio)
+indel_mat_report$conf.int.down <- as.numeric(indel_mat_report$conf.int.down)
+indel_mat_report$conf.int.up <- as.numeric(indel_mat_report$conf.int.up)
+
+
+p.indel.coi <- ggplot(data = indel_mat_report, aes(x = indel, y = odds.ratio, ymin = conf.int.down, ymax = conf.int.up)) + 
+  geom_hline(yintercept = 1, color = "blue" ) +
+  geom_pointrange(colour=ifelse(indel_mat_report$p.adj <= 0.05,"darkgreen",ifelse(indel_mat_report$p.value <= 0.05,"orange","darkgrey"))) +
+  ggtitle("Odds ratio of normalized indel counts between Pms1.d77/Pms1.d0 and WT.d77/WT.d0") +
+  theme_classic(base_size = 8) + 
+  coord_flip() +
+  ylim(0,20)
+
+
+ggsave2(filename = "indel_mat_report.pdf", plot = p.indel.coi, height = 11, width = 8) 
+p.indel.coi
+```
+
+
+
+```{r}
+library("TxDb.Mmusculus.UCSC.mm10.knownGene")
+genes_mm10 <- genes(TxDb.Mmusculus.UCSC.mm10.knownGene)
+mut_strand(snp_grl_pass[[1]], genes_mm10, mode = "transcription")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
